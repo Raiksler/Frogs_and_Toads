@@ -12,7 +12,7 @@ import (
 )
 
 const mainPage = "https://www.istockphoto.com/"
-const toadQuery = "ru/search/2/film?phrase=common+toad"
+const toadQuery = "ru/search/2/film?phrase=cute+frog"
 
 func main() {
 	toadLinks, err := parseMainPage()
@@ -30,29 +30,35 @@ func main() {
 }
 
 func parseMainPage() (result []string, err error) {
-	responce, err := http.Get(mainPage + toadQuery)
-	if err != nil {
-		log.Println("[Parser] Error while parsing main page")
-		return result, err
+	for i := 1; ; i++ {
+		log.Println(i)
+		responce, err := http.Get(mainPage + toadQuery + "&page=" + fmt.Sprint(i))
+		if err != nil {
+			log.Println("[Parser] Error while parsing main page")
+			return result, err
+		}
+
+		body, err := ioutil.ReadAll(responce.Body)
+		if err != nil {
+			log.Println("[Parser] Error while reading responce.Body")
+			return result, err
+		}
+
+		regular := regexp.MustCompile("\"\\/%.{100,600}\\d{9}-\\d{9}")
+		finded := regular.FindAll(body, -1)
+		if len(finded) == 0 {
+			break
+		}
+
+		for _, link := range finded {
+			result = append(result, mainPage+string(link)[2:])
+		}
 	}
 
-	body, err := ioutil.ReadAll(responce.Body)
-	if err != nil {
-		log.Println("[Parser] Error while reading responce.Body")
-		return result, err
-	}
-
-	regular := regexp.MustCompile("\"\\/%.{100,600}\\d{9}-\\d{9}")
-	finded := regular.FindAll(body, -1)
-
-	for _, link := range finded {
-		result = append(result, mainPage+string(link)[2:])
-	}
 	return result, err
 }
 
 func parseToadPage(toadLink string, toadNum int) error {
-	log.Println("next")
 	responce, err := http.Get(toadLink)
 	if err != nil {
 		log.Println("[Parser] Error while parsing main page")
@@ -82,7 +88,7 @@ func parseToadPage(toadLink string, toadNum int) error {
 }
 
 func downloadVideo(link string, toadId int) (err error) {
-	file, err := os.Create("toads_and_frogs/" + fmt.Sprint(toadId) + ".mp4")
+	file, err := os.Create("toads_and_frogs/" + fmt.Sprint(toadId) + "_frog.mp4")
 	if err != nil {
 		log.Println("[Downloader] Failed to create file: ", err)
 		return err
